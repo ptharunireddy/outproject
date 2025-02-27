@@ -1,0 +1,42 @@
+#THIS IS JUST A BASIC OR A ROUGH .AM STILL WORKING ON THIS PROJECT.
+#THIS IS THE SAMPLE CODE OF MY PROJECT
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from werkzeug.security import generate_password_hash, check_password_hash
+import joblib
+import numpy as np
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///patients.db'
+db = SQLAlchemy(app)
+
+class Patient(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    age = db.Column(db.Integer, nullable=False)
+    medical_history = db.Column(db.Text, nullable=False)
+
+@app.route('/add_patient', methods=['POST'])
+def add_patient():
+    data = request.get_json()
+    new_patient = Patient(name=data['name'], age=data['age'], medical_history=data['medical_history'])
+    db.session.add(new_patient)
+    db.session.commit()
+    return jsonify({'message': 'Patient added successfully'}), 201
+
+@app.route('/get_patients', methods=['GET'])
+def get_patients():
+    patients = Patient.query.all()
+    return jsonify([{'id': p.id, 'name': p.name, 'age': p.age, 'medical_history': p.medical_history} for p in patients])
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    data = request.get_json()
+    model = joblib.load('model.pkl')  # Pre-trained machine learning model
+    features = np.array(data['features']).reshape(1, -1)
+    prediction = model.predict(features)
+    return jsonify({'prediction': prediction.tolist()})
+
+if __name__ == '__main__':
+    db.create_all()
+    app.run(debug=True)
